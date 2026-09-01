@@ -73,9 +73,17 @@ body {
 .tagdot { display:inline-block; min-width:20px; text-align:center; font-size:11px; font-weight:700;
   padding:2px 5px; border:1px solid var(--line); color:var(--muted); }
 .tagbtn { background:var(--panel2); border:1px solid var(--line); color:var(--muted);
-  font-size:12px; font-weight:700; padding:6px 10px; cursor:pointer; font-family:inherit; }
+  font-size:12px; font-weight:700; padding:6px 8px; cursor:pointer; font-family:inherit; }
+.tagbtn:disabled { opacity:.3; }
 .delbtn { background:none; border:1px solid #5A2530; color:#E86A6A; font-size:12px; font-weight:700;
-  padding:6px 10px; cursor:pointer; font-family:inherit; }
+  padding:6px 8px; cursor:pointer; font-family:inherit; }
+.edithint { color:var(--muted); font-size:11px; margin:-4px 0 8px; }
+.act .inl { background:var(--panel2); border:1px solid var(--trion-dim); color:var(--text);
+  padding:8px; font-size:16px; font-family:inherit; min-width:0; border-radius:0; }
+.act .inl.name { flex:1; }
+.act .inl.pts { width:56px; text-align:center; }
+.savebtn { background:var(--trion); border:1px solid var(--trion); color:var(--bg);
+  font-size:12px; font-weight:700; padding:8px 10px; cursor:pointer; font-family:inherit; }
 .form { display:flex; gap:8px; margin-top:10px; }
 .form input { background:var(--panel2); border:1px solid var(--line); color:var(--text);
   padding:10px 12px; font-size:16px; font-family:inherit; min-width:0; border-radius:0; }
@@ -172,7 +180,7 @@ const DEFAULTS = {
   logs: [],
 };
 
-let data, editMode = false, newTag = null, toastTimer;
+let data, editMode = false, editingId = null, newTag = null, toastTimer;
 
 function load() {
   try {
@@ -239,24 +247,68 @@ function render() {
   // 行動リスト
   const list = document.getElementById("actionList");
   list.innerHTML = "";
+  if (editMode) {
+    const hint = document.createElement("div");
+    hint.className = "edithint";
+    hint.textContent = "名前をタップで変更 / ▲▼で並べ替え / タグで部門切替";
+    list.appendChild(hint);
+  }
   data.actions.forEach(a => {
     const row = document.createElement(editMode ? "div" : "button");
     row.className = "act";
-    if (editMode) {
-      row.innerHTML = tagChip(a.tag) + '<span class="nm">' + esc(a.name) + '</span>';
+    if (editMode && editingId === a.id) {
+      // その場編集:名前とptの入力欄に変形
+      const ni = document.createElement("input");
+      ni.value = a.name; ni.className = "inl name";
+      const pi = document.createElement("input");
+      pi.value = a.pts; pi.type = "number"; pi.min = "1"; pi.className = "inl pts";
+      const sv = document.createElement("button");
+      sv.className = "savebtn"; sv.textContent = "保存";
+      sv.onclick = () => {
+        const name = ni.value.trim();
+        const v = parseInt(pi.value, 10);
+        if (name) a.name = name;
+        if (v >= 1) a.pts = v;
+        editingId = null; save(); render();
+      };
+      const cx = document.createElement("button");
+      cx.className = "tagbtn"; cx.textContent = "戻";
+      cx.onclick = () => { editingId = null; render(); };
+      row.appendChild(ni); row.appendChild(pi); row.appendChild(sv); row.appendChild(cx);
+    } else if (editMode) {
+      const idx = data.actions.indexOf(a);
+      const nm = document.createElement("span");
+      nm.className = "nm"; nm.style.textDecoration = "underline dotted";
+      nm.innerHTML = tagChip(a.tag) + " " + esc(a.name);
+      nm.onclick = () => { editingId = a.id; render(); };
+      const up = document.createElement("button");
+      up.className = "tagbtn"; up.textContent = "▲";
+      up.disabled = idx === 0;
+      up.onclick = () => {
+        [data.actions[idx-1], data.actions[idx]] = [data.actions[idx], data.actions[idx-1]];
+        save(); render();
+      };
+      const dn = document.createElement("button");
+      dn.className = "tagbtn"; dn.textContent = "▼";
+      dn.disabled = idx === data.actions.length - 1;
+      dn.onclick = () => {
+        [data.actions[idx+1], data.actions[idx]] = [data.actions[idx], data.actions[idx+1]];
+        save(); render();
+      };
       const tb = document.createElement("button");
       tb.className = "tagbtn";
       tb.textContent = "タグ";
       tb.onclick = () => { a.tag = cycleTag(a.tag); save(); render(); };
       const db = document.createElement("button");
       db.className = "delbtn";
-      db.textContent = "削除";
+      db.textContent = "✕";
       db.onclick = () => {
         if (confirm("「" + a.name + "」を削除する?(記録済みポイントは残ります)")) {
           data.actions = data.actions.filter(x=>x.id!==a.id); save(); render();
         }
       };
-      row.appendChild(tb); row.appendChild(db);
+      row.appendChild(nm);
+      row.appendChild(up); row.appendChild(dn); row.appendChild(tb); row.appendChild(db);
     } else {
       row.innerHTML = tagChip(a.tag) + '<span class="nm">' + esc(a.name) + '</span>' +
         '<span class="pt">+' + a.pts + ' pt</span>';
@@ -314,6 +366,7 @@ function toast(msg) {
 
 document.getElementById("editBtn").onclick = function() {
   editMode = !editMode;
+  editingId = null;
   this.textContent = editMode ? "完了" : "編集";
   this.classList.toggle("on", editMode);
   render();
