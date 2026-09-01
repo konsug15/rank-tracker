@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Personal Rank</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap');
+:root {
+  --bg:#0A1220; --panel:#101C30; --panel2:#0D1626; --line:#1E3050;
+  --trion:#3DE8C9; --trion-dim:#1D6E63; --amber:#FFB547;
+  --text:#E8F0F5; --muted:#7C93AC;
+}
+* { box-sizing: border-box; }
+body {
+  margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+  font-family:'Chakra Petch','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width:480px; margin:0 auto; padding:20px 16px 56px; }
+.eyebrow { font-size:11px; letter-spacing:.28em; color:var(--muted); text-transform:uppercase; }
+.badge {
+  margin-top:14px; padding:22px 18px 18px; background:var(--panel);
+  border:1px solid var(--line); position:relative;
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+}
+.badge::before {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(120% 90% at 50% -10%, rgba(61,232,201,.14), transparent 60%);
+}
+.tier { font-size:30px; font-weight:700; letter-spacing:.06em; color:var(--trion);
+  text-shadow:0 0 18px rgba(61,232,201,.45); }
+.total { font-size:44px; font-weight:700; line-height:1; margin-top:6px; font-variant-numeric:tabular-nums; }
+.total small { font-size:15px; font-weight:600; color:var(--muted); margin-left:6px; }
+.bar { height:8px; background:var(--panel2); border:1px solid var(--line); margin-top:16px;
+  clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%); overflow:hidden; }
+.bar>div { height:100%; width:0; background:linear-gradient(90deg,var(--trion-dim),var(--trion));
+  box-shadow:0 0 10px rgba(61,232,201,.6); transition:width .5s ease; }
+.next { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:7px; }
+.next b { color:var(--text); font-weight:600; }
+.stats { display:flex; gap:10px; margin-top:12px; }
+.stat { flex:1; background:var(--panel); border:1px solid var(--line); padding:10px 12px;
+  clip-path:polygon(8px 0,100% 0,100% 100%,0 100%,0 8px); }
+.stat .v { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+.stat .v span { color:var(--amber); }
+.stat .k { font-size:11px; color:var(--muted); margin-top:2px; }
+.hrow { display:flex; align-items:baseline; justify-content:space-between; margin:26px 0 10px; }
+.hrow h2 { font-size:13px; letter-spacing:.2em; color:var(--muted); font-weight:600; margin:0; }
+.ghost { background:none; border:1px solid var(--line); color:var(--muted); font-size:11px;
+  padding:4px 10px; cursor:pointer; font-family:inherit; }
+.ghost.on { color:var(--trion); border-color:var(--trion-dim); }
+.actions { display:flex; flex-direction:column; gap:8px; }
+.act { display:flex; align-items:center; justify-content:space-between; gap:10px;
+  width:100%; text-align:left; background:var(--panel); border:1px solid var(--line);
+  color:var(--text); padding:13px 14px; font-size:15px; font-family:inherit; cursor:pointer;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  transition:border-color .15s; }
+.act:active { border-color:var(--trion); }
+.act .pt { color:var(--amber); font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.act .del { color:#E86A6A; font-weight:700; }
+.form { display:flex; gap:8px; margin-top:10px; }
+.form input { background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  padding:10px 12px; font-size:16px; font-family:inherit; min-width:0; border-radius:0; }
+.form .name { flex:1; }
+.form .pts { width:64px; text-align:center; }
+.form button { background:var(--trion); border:1px solid var(--trion); color:var(--bg);
+  font-weight:700; padding:0 16px; cursor:pointer; font-family:inherit;
+  clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%); }
+.log { list-style:none; margin:0; padding:0; }
+.log li { display:flex; align-items:center; gap:10px; padding:9px 2px;
+  border-bottom:1px solid var(--line); font-size:13px; }
+.log .t { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.log .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.log .p { color:var(--amber); font-weight:600; }
+.log .x { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:2px 6px; }
+.empty { color:var(--muted); font-size:13px; padding:14px 2px; }
+.io { display:flex; gap:8px; margin-top:28px; }
+.io button { flex:1; }
+.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  background:var(--trion); color:var(--bg); font-weight:700; padding:9px 18px; font-size:14px;
+  clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
+  animation:pop .25s ease; z-index:10; }
+@keyframes pop { from { opacity:0; transform:translateX(-50%) translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .bar>div { transition:none; } .toast { animation:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Personal Rank</div>
+
+  <div class="badge">
+    <div class="tier" id="tierName"></div>
+    <div class="total"><span id="totalPts"></span><small>pt</small></div>
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="next" id="nextRow"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v"><span id="todayPts"></span> pt</div><div class="k">今日の獲得</div></div>
+    <div class="stat"><div class="v" id="streak"></div><div class="k">連続記録</div></div>
+  </div>
+
+  <div class="hrow">
+    <h2>ポイントを獲得</h2>
+    <button class="ghost" id="editBtn">編集</button>
+  </div>
+  <div class="actions" id="actionList"></div>
+  <div class="form">
+    <input class="name" id="inName" placeholder="行動名(例:読書30分)">
+    <input class="pts" id="inPts" type="number" min="1" placeholder="pt">
+    <button id="addBtn">追加</button>
+  </div>
+
+  <div class="hrow"><h2>戦績ログ</h2></div>
+  <ul class="log" id="logList"></ul>
+  <div class="empty" id="logEmpty" hidden>まだ記録がありません。最初の1ptを取りに行きましょう。</div>
+
+  <div class="io">
+    <button class="ghost" id="exportBtn">データを書き出す</button>
+    <button class="ghost" id="importBtn">データを読み込む</button>
+    <input type="file" id="importFile" accept=".json" hidden>
+  </div>
+</div>
+
+<script>
+const TIERS = [
+  { name: "訓練生", min: 0 },
+  { name: "C級", min: 1000 },
+  { name: "B級", min: 2500 },
+  { name: "A級", min: 4500 },
+  { name: "マスター", min: 8000 },
+  { name: "最強クラス", min: 15000 },
+];
+const KEY = "rank-tracker-v1";
+const DEFAULTS = {
+  actions: [
+    { id: "a1", name: "5分だけ手をつける", pts: 1 },
+    { id: "a2", name: "30分集中する", pts: 3 },
+    { id: "a3", name: "運動する", pts: 4 },
+  ],
+  logs: [],
+};
+
+let data, editMode = false, toastTimer;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    data = raw ? JSON.parse(raw) : structuredClone(DEFAULTS);
+    if (!Array.isArray(data.actions) || !Array.isArray(data.logs)) throw 0;
+  } catch (e) { data = structuredClone(DEFAULTS); }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch (e) { alert("保存に失敗しました。ブラウザのプライベートモードでは保存できません。"); }
+}
+const dayKey = (ts) => { const d = new Date(ts); return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate(); };
+const esc = (s) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function render() {
+  const total = data.logs.reduce((s,l)=>s+l.pts,0);
+  let ti = 0; TIERS.forEach((t,i)=>{ if (total >= t.min) ti = i; });
+  const tier = TIERS[ti], next = TIERS[ti+1] || null;
+
+  document.getElementById("tierName").textContent = tier.name;
+  document.getElementById("totalPts").textContent = total.toLocaleString();
+  document.getElementById("barFill").style.width =
+    (next ? Math.min(100,(total-tier.min)/(next.min-tier.min)*100) : 100) + "%";
+  document.getElementById("nextRow").innerHTML = next
+    ? `<span>次:<b>${next.name}</b></span><span>あと <b>${(next.min-total).toLocaleString()}</b> pt</span>`
+    : `<span>最高ランク到達。ここからは記録更新の領域。</span>`;
+
+  const today = dayKey(Date.now());
+  document.getElementById("todayPts").textContent =
+    "+" + data.logs.filter(l=>dayKey(l.ts)===today).reduce((s,l)=>s+l.pts,0);
+
+  const days = new Set(data.logs.map(l=>dayKey(l.ts)));
+  let streak = 0; const d = new Date();
+  if (!days.has(dayKey(d.getTime()))) d.setDate(d.getDate()-1);
+  while (days.has(dayKey(d.getTime()))) { streak++; d.setDate(d.getDate()-1); }
+  document.getElementById("streak").textContent = streak + " 日";
+
+  const list = document.getElementById("actionList");
+  list.innerHTML = "";
+  data.actions.forEach(a => {
+    const b = document.createElement("button");
+    b.className = "act";
+    b.innerHTML = `<span>${esc(a.name)}</span>` +
+      (editMode ? `<span class="del">削除</span>` : `<span class="pt">+${a.pts} pt</span>`);
+    b.onclick = () => onAction(a);
+    list.appendChild(b);
+  });
+  if (data.actions.length === 0)
+    list.innerHTML = `<div class="empty">行動が未登録です。下のフォームから追加してください。</div>`;
+
+  const logList = document.getElementById("logList");
+  const recent = [...data.logs].reverse().slice(0,10);
+  logList.innerHTML = "";
+  recent.forEach(l => {
+    const t = new Date(l.ts);
+    const time = (t.getMonth()+1)+"/"+t.getDate()+" "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="t">${time}</span><span class="n">${esc(l.name)}</span><span class="p">+${l.pts}</span>`;
+    const x = document.createElement("button");
+    x.className = "x"; x.textContent = "✕"; x.setAttribute("aria-label","取り消す");
+    x.onclick = () => { data.logs = data.logs.filter(v=>v.id!==l.id); save(); render(); };
+    li.appendChild(x);
+    logList.appendChild(li);
+  });
+  document.getElementById("logEmpty").hidden = recent.length > 0;
+}
+
+function onAction(a) {
+  if (editMode) {
+    if (confirm(`「${a.name}」を削除する?(記録済みポイントは残ります)`)) {
+      data.actions = data.actions.filter(x=>x.id!==a.id); save(); render();
+    }
+    return;
+  }
+  data.logs.push({ id:"l"+Date.now()+Math.random().toString(36).slice(2,6), name:a.name, pts:a.pts, ts:Date.now() });
+  save(); render(); toast("+"+a.pts+" pt");
+}
+
+function toast(msg) {
+  document.querySelectorAll(".toast").forEach(e=>e.remove());
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.remove(), 1600);
+}
+
+document.getElementById("editBtn").onclick = function() {
+  editMode = !editMode;
+  this.textContent = editMode ? "完了" : "編集";
+  this.classList.toggle("on", editMode);
+  render();
+};
+document.getElementById("addBtn").onclick = () => {
+  const name = document.getElementById("inName").value.trim();
+  const pts = parseInt(document.getElementById("inPts").value, 10);
+  if (!name || !pts || pts < 1) return;
+  data.actions.push({ id:"a"+Date.now(), name, pts });
+  document.getElementById("inName").value = "";
+  document.getElementById("inPts").value = "";
+  save(); render();
+};
+document.getElementById("exportBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify(data,null,2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `rank-tracker-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
+document.getElementById("importFile").onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.actions) || !Array.isArray(d.logs)) throw 0;
+      if (confirm("現在のデータを読み込んだ内容で置き換えます。よろしいですか?")) {
+        data = d; save(); render(); toast("読み込み完了");
+      }
+    } catch (err) { alert("ファイルの形式が正しくありません。"); }
+    e.target.value = "";
+  };
+  r.readAsText(f);
+};
+
+load(); render();
+</script>
+</body>
+</html>
