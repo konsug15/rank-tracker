@@ -20,7 +20,8 @@ body {
   font-family:'Chakra Petch','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
-.wrap { max-width:480px; margin:0 auto; padding:20px 16px 56px; }
+.wrap { max-width:480px; margin:0 auto;
+  padding: calc(20px + env(safe-area-inset-top)) 16px calc(56px + env(safe-area-inset-bottom)); }
 .eyebrow { font-size:11px; letter-spacing:.28em; color:var(--muted); text-transform:uppercase; }
 .badge {
   margin-top:14px; padding:22px 18px 18px; background:var(--panel);
@@ -79,7 +80,7 @@ body {
 .empty { color:var(--muted); font-size:13px; padding:14px 2px; }
 .io { display:flex; gap:8px; margin-top:28px; }
 .io button { flex:1; }
-.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+.toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   background:var(--trion); color:var(--bg); font-weight:700; padding:9px 18px; font-size:14px;
   clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
   animation:pop .25s ease; z-index:10; }
