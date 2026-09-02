@@ -96,6 +96,20 @@ body {
 .tagpick button { flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--muted);
   font-size:13px; font-weight:700; padding:8px 0; cursor:pointer; font-family:inherit; }
 .log { list-style:none; margin:0; padding:0; }
+.chart { display:flex; align-items:flex-end; gap:4px; height:96px;
+  background:var(--panel); border:1px solid var(--line); padding:12px 10px 8px;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
+.chart .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end;
+  align-items:center; gap:3px; height:100%; min-width:0; }
+.chart .vl { font-size:9px; color:var(--amber); font-weight:700; font-variant-numeric:tabular-nums; }
+.chart .b { width:100%; background:linear-gradient(180deg,var(--trion),var(--trion-dim)); min-height:2px; }
+.chart .col.zero .b { background:var(--panel2); border-top:1px solid var(--line); }
+.chart .col.today .b { box-shadow:0 0 8px rgba(61,232,201,.7); }
+.chart .lb { font-size:9px; color:var(--muted); white-space:nowrap; }
+.chart .col.today .lb { color:var(--trion); font-weight:700; }
+.log li.dayrow { justify-content:space-between; color:var(--muted); font-size:12px;
+  font-weight:700; padding:14px 2px 5px; border-bottom:1px solid var(--line); letter-spacing:.06em; }
+.log li.dayrow .dp { color:var(--amber); font-variant-numeric:tabular-nums; }
 .log li { display:flex; align-items:center; gap:8px; padding:9px 2px;
   border-bottom:1px solid var(--line); font-size:13px; }
 .log .t { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap;
@@ -144,7 +158,13 @@ body {
   </div>
   <div class="tagpick" id="tagPick"></div>
 
-  <div class="hrow"><h2>戦績ログ</h2></div>
+  <div class="hrow"><h2>振り返り:直近14日</h2></div>
+  <div class="chart" id="chart"></div>
+
+  <div class="hrow">
+    <h2>戦績ログ</h2>
+    <button class="ghost" id="logToggle">すべて表示</button>
+  </div>
   <ul class="log" id="logList"></ul>
   <div class="empty" id="logEmpty" hidden>まだ記録がありません。最初の1ptを取りに行きましょう。</div>
 
@@ -181,7 +201,7 @@ const DEFAULTS = {
   logs: [],
 };
 
-let data, editMode = false, editingId = null, newTag = null, toastTimer;
+let data, editMode = false, editingId = null, newTag = null, showAllLogs = false, toastTimer;
 
 function load() {
   try {
@@ -337,13 +357,48 @@ function render() {
     tp.appendChild(b);
   });
 
+  // 振り返り:直近14日のバーチャート
+  const chart = document.getElementById("chart");
+  chart.innerHTML = "";
+  const dayTotals = {};
+  data.logs.forEach(l => { const k = dayKey(l.ts); dayTotals[k] = (dayTotals[k] || 0) + l.pts; });
+  const WD = ["日","月","火","水","木","金","土"];
+  const cols = [];
+  for (let i = 13; i >= 0; i--) {
+    const dd = new Date(); dd.setDate(dd.getDate() - i);
+    cols.push({ k: dayKey(dd.getTime()), pts: dayTotals[dayKey(dd.getTime())] || 0,
+      label: (dd.getMonth()+1) + "/" + dd.getDate(), wd: WD[dd.getDay()], today: i === 0 });
+  }
+  const maxPts = Math.max(1, ...cols.map(c => c.pts));
+  cols.forEach(c => {
+    const col = document.createElement("div");
+    col.className = "col" + (c.pts === 0 ? " zero" : "") + (c.today ? " today" : "");
+    const h = c.pts === 0 ? 2 : Math.max(4, Math.round(c.pts / maxPts * 52));
+    col.innerHTML = '<span class="vl">' + (c.pts > 0 ? c.pts : "") + '</span>' +
+      '<div class="b" style="height:' + h + 'px"></div>' +
+      '<span class="lb">' + c.wd + '</span>';
+    chart.appendChild(col);
+  });
+
   // ログ
   const logList = document.getElementById("logList");
-  const recent = [...data.logs].reverse().slice(0,10);
+  const shown = showAllLogs ? [...data.logs].reverse() : [...data.logs].reverse().slice(0,10);
+  document.getElementById("logToggle").textContent = showAllLogs ? "直近のみ" : "すべて表示";
   logList.innerHTML = "";
-  recent.forEach(l => {
+  let curDay = null;
+  shown.forEach(l => {
     const t = new Date(l.ts);
-    const time = (t.getMonth()+1)+"/"+t.getDate()+" "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");
+    if (showAllLogs && dayKey(l.ts) !== curDay) {
+      curDay = dayKey(l.ts);
+      const dr = document.createElement("li");
+      dr.className = "dayrow";
+      dr.innerHTML = '<span>' + (t.getMonth()+1) + "/" + t.getDate() + "(" + WD[t.getDay()] + ')</span>' +
+        '<span class="dp">+' + (dayTotals[curDay] || 0) + ' pt</span>';
+      logList.appendChild(dr);
+    }
+    const time = showAllLogs
+      ? String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0")
+      : (t.getMonth()+1)+"/"+t.getDate()+" "+String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");
     const li = document.createElement("li");
     li.innerHTML = '<span class="t">' + time + '</span>' + tagChip(l.tag) +
       '<span class="n">' + esc(l.name) + '</span><span class="p">+' + l.pts + '</span>';
@@ -353,7 +408,7 @@ function render() {
     li.appendChild(x);
     logList.appendChild(li);
   });
-  document.getElementById("logEmpty").hidden = recent.length > 0;
+  document.getElementById("logEmpty").hidden = shown.length > 0;
 }
 
 function toast(msg) {
@@ -372,6 +427,7 @@ document.getElementById("editBtn").onclick = function() {
   this.classList.toggle("on", editMode);
   render();
 };
+document.getElementById("logToggle").onclick = () => { showAllLogs = !showAllLogs; render(); };
 document.getElementById("addBtn").onclick = () => {
   const name = document.getElementById("inName").value.trim();
   const pts = parseInt(document.getElementById("inPts").value, 10);
